@@ -1,0 +1,99 @@
+﻿@using DAL.Entities
+@model List<Contact>
+
+<h1>Contact Data</h1>
+
+<form asp-controller="Contact" asp-action="UploadCsv" method="post" enctype="multipart/form-data">
+    <input type="file" name="file" />
+    <button type="submit">Upload CSV</button>
+</form>
+
+
+<table id="ContactTable" class="table">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Date of Birth</th>
+            <th>Married</th>
+            <th>Phone</th>
+            <th>Salary</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var Contact in Model)
+        {
+            <tr data-id="@Contact.Id">
+                <td contenteditable="true">@Contact.Name</td>
+                <td contenteditable="true">@Contact.DateOfBirth.ToShortDateString()</td>
+                <td contenteditable="true">@Contact.Married</td>
+                <td contenteditable="true">@Contact.Phone</td>
+                <td contenteditable="true">@Contact.Salary</td>
+                <td>
+                    <button class="btn btn-danger btn-delete">Delete</button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<script>
+    document.querySelectorAll('.btn-delete').forEach(button => {
+        button.addEventListener('click', async (event) => {
+            const row = event.target.closest('tr');
+            const id = row.dataset.id;
+
+            const response = await fetch(`/Contact/Delete/${id}`, { method: 'POST' });
+            if (response.ok) {
+                row.remove();
+            } else {
+                alert('Failed to delete Contact.');
+            }
+        });
+    });
+
+    document.querySelectorAll('[contenteditable]').forEach(cell => {
+        cell.addEventListener('blur', async (event) => {
+            const row = event.target.closest('tr');
+            const id = row.dataset.id;
+
+            const data = {
+                Id: id,
+                Name: row.children[0].textContent,
+                DateOfBirth: row.children[1].textContent,
+                Married: row.children[2].textContent === 'true',
+                Phone: row.children[3].textContent,
+                Salary: parseFloat(row.children[4].textContent)
+            };
+
+            const response = await fetch(`/Contact/Edit`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                alert('Failed to update Contact.');
+            }
+        });
+    });
+    const table = document.getElementById('ContactTable');
+
+    document.getElementById('filterInput').addEventListener('input', (e) => {
+        const filter = e.target.value.toLowerCase();
+        [...table.rows].forEach(row => {
+            const nameCell = row.cells[0];
+            if (nameCell) {
+                row.style.display = nameCell.textContent.toLowerCase().includes(filter) ? '' : 'none';
+            }
+        });
+    });
+
+    document.querySelectorAll('th').forEach((header, index) => {
+        header.addEventListener('click', () => {
+            const rows = Array.from(table.rows).slice(1);
+            rows.sort((a, b) => a.cells[index].textContent.localeCompare(b.cells[index].textContent));
+            rows.forEach(row => table.appendChild(row));
+        });
+    });
+</script>
